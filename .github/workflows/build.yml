@@ -25,29 +25,37 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y libguestfs-tools rng-tools
-          echo "::set-output name=status::success"
+          echo "status=success" >> $GITHUB_OUTPUT
           
       - name: Run Shell Script
         id: build
-        if: steps.install.outputs.status == 'success'
+        if: steps.install.GITHUB_OUTPUT.status == 'success'
         run: |
           /usr/bin/bash custom_qcow2.sh
-          echo "::set-output name=status::success"
+          echo "status=success" >> $GITHUB_OUTPUT
 
       - name: Generate release tag
         id: tag
-        if: env.UPLOAD_RELEASE == 'true' && steps.build.outputs.status == 'success' && !cancelled()
+        if: env.UPLOAD_RELEASE == 'true' && steps.build.GITHUB_OUTPUT.status == 'success' && !cancelled()
         run: |
-          echo "::set-output name=release_tag::$(date +"%Y%m%d")"
-          echo "::set-output name=status::success"
+          echo "release_tag=$(date +"%Y%m%d")" >> $GITHUB_OUTPUT
+          echo "status=success" >> $GITHUB_OUTPUT
+
+      - name: check path
+        run: |
+          pwd
+          ls
+          ls images_cache
+          ls images_work
+          ls images_work/compress
 
       - name: 'Upload release'
         uses: softprops/action-gh-release@v1
-        if: steps.tag.outputs.status == 'success' && !cancelled()
+        if: steps.tag.GITHUB_OUTPUT.status == 'success' && !cancelled()
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         with:
-          tag_name: ${{ steps.tag.outputs.release_tag }}
+          tag_name: ${{ steps.tag.GITHUB_OUTPUT.release_tag }}
           files: |
             images_work/compress/*.qcow2
 
