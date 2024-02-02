@@ -3,6 +3,7 @@ name: Build Images Template
 on:
   schedule:
     - cron: '0 0 1 * *'
+  workflow_dispatch:
 
 env:
   UPLOAD_RELEASE: true
