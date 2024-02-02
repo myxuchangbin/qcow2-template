@@ -29,14 +29,14 @@ jobs:
           
       - name: Run Shell Script
         id: build
-        if: steps.install.GITHUB_OUTPUT.status == 'success'
+        if: steps.install.outputs.status == 'success'
         run: |
           /usr/bin/bash custom_qcow2.sh
           echo "status=success" >> $GITHUB_OUTPUT
 
       - name: Generate release tag
         id: tag
-        if: env.UPLOAD_RELEASE == 'true' && steps.build.GITHUB_OUTPUT.status == 'success' && !cancelled()
+        if: env.UPLOAD_RELEASE == 'true' && steps.build.outputs.status == 'success' && !cancelled()
         run: |
           echo "release_tag=$(date +"%Y%m%d")" >> $GITHUB_OUTPUT
           echo "status=success" >> $GITHUB_OUTPUT
@@ -51,11 +51,11 @@ jobs:
 
       - name: 'Upload release'
         uses: softprops/action-gh-release@v1
-        if: steps.tag.GITHUB_OUTPUT.status == 'success' && !cancelled()
+        if: steps.tag.outputs.status == 'success' && !cancelled()
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         with:
-          tag_name: ${{ steps.tag.GITHUB_OUTPUT.release_tag }}
+          tag_name: ${{ steps.tag.outputs.release_tag }}
           files: |
             images_work/compress/*.qcow2
 
