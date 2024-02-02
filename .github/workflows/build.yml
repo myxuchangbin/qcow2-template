@@ -1,0 +1,53 @@
+name: Build Images Template
+
+on:
+  schedule:
+    - cron: '0 0 1 * *'
+
+env:
+  UPLOAD_RELEASE: true
+  TZ: Asia/Shanghai
+
+jobs:
+  build_images_template:
+    runs-on: ubuntu-latest
+    steps:
+        # 拉取代码
+      - name: 'Checkout codes'
+        uses: actions/checkout@v4
+        with:
+          # 获取最新的代码, 可以减少程序消耗
+          fetch-depth: 0
+
+      - name: Environment preparation
+        id: install
+        run: |
+          sudo apt install -y libguestfs-tools rng-tools
+          echo "::set-output name=status::success"
+          
+      - name: Run Shell Script
+        id: build
+        if: steps.install.outputs.status == 'success'
+        run: |
+          /usr/bin/bash custom_qcow2.sh
+          echo "::set-output name=status::success"
+
+      - name: Generate release tag
+        id: tag
+        if: env.UPLOAD_RELEASE == 'true' && steps.build.outputs.status == 'success' && !cancelled()
+        run: |
+          echo "::set-output name=release_tag::$(date +"%Y%m%d")"
+          echo "::set-output name=status::success"
+
+      - name: 'Upload release'
+        uses: softprops/action-gh-release@v1
+        if: steps.tag.outputs.status == 'success' && !cancelled()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+        with:
+          tag_name: ${{ steps.tag.outputs.release_tag }}
+          files: |
+          images_work/compress/*.qcow2
+
+      - name: 'Clean Up'
+        run: rm -rf images_cache images_work
