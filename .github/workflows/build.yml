@@ -23,6 +23,7 @@ jobs:
       - name: Environment preparation
         id: install
         run: |
+          sudo apt update
           sudo apt install -y libguestfs-tools rng-tools
           echo "::set-output name=status::success"
           
