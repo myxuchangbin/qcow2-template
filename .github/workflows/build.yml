@@ -47,7 +47,7 @@ jobs:
         with:
           tag_name: ${{ steps.tag.outputs.release_tag }}
           files: |
-          images_work/compress/*.qcow2
+            images_work/compress/*.qcow2
 
       - name: 'Clean Up'
         run: rm -rf images_cache images_work
