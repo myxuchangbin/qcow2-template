@@ -41,7 +41,7 @@ download_image() {
     local image_url=$2
     local image_file="${download_dir}/${file_name}"
     echo "下载镜像: $os_name"
-    wget -c "$image_url" -O "$image_file"
+    wget --no-check-certificate -nv "$image_url" -O "$image_file"
 }
 
 custom_image() {
@@ -75,11 +75,14 @@ custom_image() {
     virt-edit -a $work_image_file /etc/motd -e '$_ = "" if /^Build time/'
     # 安装常用工具
     virt-customize -a $work_image_file --install cloud-init,qemu-guest-agent,bash-completion,curl,wget,ca-certificates,sudo,net-tools
-    virt-customize -a $work_image_file --run-command "systemctl enable qemu-guest-agent"
-    virt-customize -a $work_image_file --run-command "rc-update add qemu-guest-agent"
+    if [[ $os_name =~ ^alpinelinux ]]; then
+        irt-customize -a $work_image_file --run-command "rc-update add qemu-guest-agent"
+    else
+        virt-customize -a $work_image_file --run-command "systemctl enable qemu-guest-agent"
+    fi
     virt-customize -a $work_image_file --root-password password:password
     virt-customize -a $work_image_file --selinux-relabel
-    # 使用virt-sparsify去除镜像空洞并压缩
+    # 使用virt-sparsify将空闲空间归零和稀疏化
     virt-sparsify $work_image_file --compress --convert qcow2 ${compress_dir}/${qcow2_file}
     echo "镜像修改完成: ${qcow2_file}"
 }

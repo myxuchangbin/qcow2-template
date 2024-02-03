@@ -31,7 +31,7 @@ jobs:
         id: build
         if: steps.install.outputs.status == 'success'
         run: |
-          /usr/bin/bash custom_qcow2.sh
+          sudo /usr/bin/bash custom_qcow2.sh
           echo "status=success" >> $GITHUB_OUTPUT
 
       - name: Generate release tag
