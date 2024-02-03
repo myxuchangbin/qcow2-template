@@ -54,4 +54,4 @@ jobs:
             images_work/compress/*.qcow2
 
       - name: 'Clean Up'
-        run: rm -rf images_cache images_work
+        run: sudo rm -rf images_cache images_work
