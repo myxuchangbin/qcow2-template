@@ -48,8 +48,8 @@ custom_image() {
     if ! command -v virt-customize &> /dev/null
     then
         echo "virt-customize not found, installing libguestfs-tools"
-        apt update
-        apt install -y libguestfs-tools rng-tools
+        apt-get update
+        apt-get install -y libguestfs-tools rng-tools
     fi
     qcow2_file=$1
     local download_image_file="${download_dir}/${qcow2_file}"

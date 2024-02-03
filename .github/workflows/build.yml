@@ -12,6 +12,8 @@ env:
 jobs:
   build_images_template:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
         # 拉取代码
       - name: 'Checkout codes'
@@ -23,8 +25,8 @@ jobs:
       - name: Environment preparation
         id: install
         run: |
-          sudo apt update
-          sudo apt install -y libguestfs-tools rng-tools
+          sudo apt-get update
+          sudo apt-get install -y libguestfs-tools rng-tools
           echo "status=success" >> $GITHUB_OUTPUT
           
       - name: Run Shell Script
@@ -40,14 +42,6 @@ jobs:
         run: |
           echo "release_tag=$(date +"%Y%m%d")" >> $GITHUB_OUTPUT
           echo "status=success" >> $GITHUB_OUTPUT
-
-      - name: check path
-        run: |
-          pwd
-          ls
-          ls images_cache
-          ls images_work
-          ls images_work/compress
 
       - name: 'Upload release'
         uses: softprops/action-gh-release@v1
