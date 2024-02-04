@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# 该数组未使用，请修改下面一个数组，本数组只记录官方下载地址
-declare -A os_images_official=(
+# 该数组未使用，请修改下面一个数组，本数组仅做备份，记录官方下载地址
+declare -A os_images_bak=(
     ["ubuntu1804.qcow2"]="https://cloud-images.ubuntu.com/releases/bionic/release/ubuntu-18.04-server-cloudimg-amd64.img"
     ["ubuntu2004.img"]="https://cloud-images.ubuntu.com/releases/focal/release/ubuntu-20.04-server-cloudimg-amd64.img"
     ["ubuntu2204.img"]="https://cloud-images.ubuntu.com/releases/22.04/release/ubuntu-22.04-server-cloudimg-amd64.img"
@@ -79,6 +79,13 @@ custom_image() {
         irt-customize -a $work_image_file --run-command "rc-update add qemu-guest-agent"
     else
         virt-customize -a $work_image_file --run-command "systemctl enable qemu-guest-agent"
+    fi
+    if [[ $os_name =~ ^centos7 ]]; then
+        # 修复centos7下cloud-init19.4版本不支持static6，导致ipv6在PVE中下发失败
+        # https://forum.proxmox.com/threads/cloud-init-suddenly-stopped-working-for-centos-fedora-templates.87439/#post-563138
+        virt-customize -a $work_image_file --run-command "sed -i \"s/elif subnet_is_ipv6(subnet) and subnet\['type'\] == 'static':/elif subnet_is_ipv6(subnet):\\n                    iface['mode'] = 'static'/\" /usr/lib/python2.7/site-packages/cloudinit/net/eni.py;
+            sed -i \"s/elif sn_type in \['static'\]:/elif sn_type in \['static', 'static6'\]:/\" /usr/lib/python2.7/site-packages/cloudinit/net/netplan.py;
+            sed -i \"s/elif subnet_type == 'static':/elif subnet_type in \['static', 'static6'\]:/g\" /usr/lib/python2.7/site-packages/cloudinit/net/sysconfig.py"
     fi
     virt-customize -a $work_image_file --root-password password:password
     virt-customize -a $work_image_file --selinux-relabel
