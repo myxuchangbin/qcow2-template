@@ -4,7 +4,7 @@
 
 Releases中的镜像：
 
-预安装cloud-init、qemu-guest-agent，SSH允许rooty用户及密码验证登录
+预安装cloud-init、qemu-guest-agent，SSH允许root用户及密码验证登录
 
 默认用户名：```root```
 
