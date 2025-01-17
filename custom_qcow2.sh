@@ -59,7 +59,7 @@ custom_image() {
     local download_image_file="${download_dir}/${qcow2_file}"
     local work_image_file="${work_dir}/${qcow2_file}"
     echo "复制文件..."
-    cp -a ${download_image_file} ${work_image_file}
+    mv ${download_image_file} ${work_image_file}
     echo "修改镜像：$qcow2_file..."
     # 启用root登录
     virt-edit -a $work_image_file /etc/cloud/cloud.cfg -e 's/disable_root:.*[Tt]rue/disable_root: False/'
