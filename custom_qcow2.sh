@@ -94,7 +94,7 @@ custom_image() {
     virt-customize -a $work_image_file --root-password password:password
     virt-customize -a $work_image_file --selinux-relabel
     # 使用virt-sparsify将空闲空间归零和稀疏化
-    virt-sparsify $work_image_file --compress --convert qcow2 ${compress_dir}/${qcow2_file}
+    virt-sparsify --check-tmpdir=ignore $work_image_file --compress --convert qcow2 ${compress_dir}/${qcow2_file}
     echo "镜像修改完成: ${qcow2_file}"
 }
 
