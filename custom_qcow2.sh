@@ -80,7 +80,7 @@ custom_image() {
     # 安装常用工具
     virt-customize -a $work_image_file --install cloud-init,qemu-guest-agent,bash-completion,curl,wget,ca-certificates,sudo,net-tools
     if [[ $os_name =~ ^alpinelinux ]]; then
-        irt-customize -a $work_image_file --run-command "rc-update add qemu-guest-agent"
+        virt-customize -a $work_image_file --run-command "rc-update add qemu-guest-agent"
     else
         virt-customize -a $work_image_file --run-command "systemctl enable qemu-guest-agent"
     fi
