@@ -1,15 +1,17 @@
 #!/bin/bash
 
-# 该数组未使用，请修改下面一个数组，本数组仅做备份，记录官方下载地址
+# 该数组未使用，仅记录官方下载地址，请修改下面一个数组
 declare -A os_images_bak=(
     ["ubuntu1804.qcow2"]="https://cloud-images.ubuntu.com/releases/bionic/release/ubuntu-18.04-server-cloudimg-amd64.img"
     ["ubuntu2004.img"]="https://cloud-images.ubuntu.com/releases/focal/release/ubuntu-20.04-server-cloudimg-amd64.img"
     ["ubuntu2204.img"]="https://cloud-images.ubuntu.com/releases/22.04/release/ubuntu-22.04-server-cloudimg-amd64.img"
+    ["ubuntu2404.img"]="https://cloud-images.ubuntu.com/releases/24.04/release/ubuntu-24.04-server-cloudimg-amd64.img"
     ["debian11.qcow2"]="https://cloud.debian.org/images/cloud/bullseye/latest/debian-11-generic-amd64.qcow2"
     ["debian12.qcow2"]="https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-generic-amd64.qcow2"
     ["centos7.qcow2"]="https://cloud.centos.org/centos/7/images/CentOS-7-x86_64-GenericCloud.qcow2"
     ["centos8-stream.qcow2"]="https://cloud.centos.org/centos/8-stream/x86_64/images/CentOS-Stream-GenericCloud-8-latest.x86_64.qcow2"
     ["centos9-stream.qcow2"]="https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2"
+    ["centos10-stream.qcow2"]="https://cloud.centos.org/centos/10-stream/x86_64/images/CentOS-Stream-GenericCloud-10-latest.x86_64.qcow2"
     ["almalinux8.qcow2"]="https://repo.almalinux.org/almalinux/8/cloud/x86_64/images/AlmaLinux-8-GenericCloud-latest.x86_64.qcow2"
     ["almalinux9.qcow2"]="https://repo.almalinux.org/almalinux/9/cloud/x86_64/images/AlmaLinux-9-GenericCloud-latest.x86_64.qcow2"
     ["rockylinux8.qcow2"]="http://download.rockylinux.org/pub/rocky/8/images/x86_64/Rocky-8-GenericCloud-Base.latest.x86_64.qcow2"
@@ -18,16 +20,18 @@ declare -A os_images_bak=(
     ["alpinelinux_stable.qcow2"]="https://dl-cdn.alpinelinux.org/alpine/v3.19/releases/cloud/nocloud_alpine-3.19.1-x86_64-bios-cloudinit-r0.qcow2"
 )
 
-# 可以根据格式按需更新，该数组镜像文件来自主机商idc.wiki，感谢
+# 可以根据格式按需修改，目前镜像文件链接来自主机商idc.wiki
 declare -A os_images=(
     ["ubuntu1804.qcow2"]="https://down.idc.wiki/Image/realServer-Template/current/qcow2/ubuntu18.qcow2"
     ["ubuntu2004.qcow2"]="https://down.idc.wiki/Image/realServer-Template/current/qcow2/ubuntu20.qcow2"
     ["ubuntu2204.qcow2"]="https://down.idc.wiki/Image/realServer-Template/current/qcow2/ubuntu22.qcow2"
+    ["ubuntu2404.qcow2"]="https://down.idc.wiki/Image/realServer-Template/current/qcow2/ubuntu24.qcow2"
     ["debian11.qcow2"]="https://down.idc.wiki/Image/realServer-Template/current/qcow2/debian11.qcow2"
     ["debian12.qcow2"]="https://down.idc.wiki/Image/realServer-Template/current/qcow2/debian12.qcow2"
     ["centos7.qcow2"]="https://down.idc.wiki/Image/realServer-Template/current/qcow2/centos7.qcow2"
     ["centos8-stream.qcow2"]="https://down.idc.wiki/Image/realServer-Template/current/qcow2/centos8-stream.qcow2"
     ["centos9-stream.qcow2"]="https://down.idc.wiki/Image/realServer-Template/current/qcow2/centos9-stream.qcow2"
+    ["centos10-stream.qcow2"]="https://down.idc.wiki/Image/realServer-Template/current/qcow2/centos10-stream.qcow2"
     ["almalinux8.qcow2"]="https://down.idc.wiki/Image/realServer-Template/current/qcow2/almalinux8.qcow2"
     ["almalinux9.qcow2"]="https://down.idc.wiki/Image/realServer-Template/current/qcow2/almalinux9.qcow2"
     ["rockylinux8.qcow2"]="https://down.idc.wiki/Image/realServer-Template/current/qcow2/rockylinux8.qcow2"
