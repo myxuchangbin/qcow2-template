@@ -43,7 +43,8 @@ jobs:
         id: build
         if: steps.install.outputs.status == 'success'
         run: |
-          sudo /usr/bin/bash build_custom_cloud_images.sh
+          sudo env LIBGUESTFS_BACKEND=direct \
+            /usr/bin/bash build_custom_cloud_images.sh almalinux8.qcow2
           echo "status=success" >> $GITHUB_OUTPUT
 
       - name: Generate release tag
