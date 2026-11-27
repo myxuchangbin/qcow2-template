@@ -35,7 +35,7 @@ jobs:
         id: install
         run: |
           sudo apt-get update
-          sudo apt-get install -y libguestfs-tools rng-tools
+          sudo apt-get install -y libguestfs-tools rng-tools isc-dhcp-client dhcpcd-base
           sudo apt-get remove -y passt
           echo "status=success" >> $GITHUB_OUTPUT
           
@@ -43,8 +43,7 @@ jobs:
         id: build
         if: steps.install.outputs.status == 'success'
         run: |
-          sudo env LIBGUESTFS_BACKEND=direct \
-            /usr/bin/bash build_custom_cloud_images.sh almalinux8.qcow2
+          sudo /usr/bin/bash build_custom_cloud_images.sh almalinux8.qcow2
           echo "status=success" >> $GITHUB_OUTPUT
 
       - name: Generate release tag
