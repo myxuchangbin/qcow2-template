@@ -19,15 +19,50 @@ declare -A os_images=(
     ["rockylinux8.qcow2"]="https://download.rockylinux.org/pub/rocky/8/images/x86_64/Rocky-8-GenericCloud-Base.latest.x86_64.qcow2"
     ["rockylinux9.qcow2"]="https://download.rockylinux.org/pub/rocky/9/images/x86_64/Rocky-9-GenericCloud-Base.latest.x86_64.qcow2"
     ["rockylinux10.qcow2"]="https://download.rockylinux.org/pub/rocky/10/images/x86_64/Rocky-10-GenericCloud-Base.latest.x86_64.qcow2"
-    ["alpinelinux_324.qcow2"]="https://dl-cdn.alpinelinux.org/alpine/v3.24/releases/cloud/alpine-3.24.2-x86_64-cloudinit-r0.qcow2"
-    ["alpinelinux_323.qcow2"]="https://dl-cdn.alpinelinux.org/alpine/v3.23/releases/cloud/alpine-3.23.3-x86_64-bios-cloudinit-r0.qcow2"
-    ["alpinelinux_322.qcow2"]="https://dl-cdn.alpinelinux.org/alpine/v3.22/releases/cloud/alpine-3.22.1-x86_64-bios-cloudinit-r0.qcow2"
+    ["alpinelinux_324.qcow2"]="3.24:cloudinit"
+    ["alpinelinux_323.qcow2"]="3.23:bios-cloudinit"
+    ["alpinelinux_322.qcow2"]="3.22:bios-cloudinit"
 )
+
+get_latest_alpine_url() {
+    local branch=$1
+    local image_type=$2
+    local base_url="https://dl-cdn.alpinelinux.org/alpine/v${branch}/releases/cloud"
+    local listing file_name
+    local branch_pattern=${branch//./[.]}
+
+    if ! listing=$(wget -qO- "${base_url}/"); then
+        echo "获取 Alpine 镜像目录失败: ${base_url}/" >&2
+        return 1
+    fi
+
+    file_name=$(
+        printf '%s\n' "$listing" |
+            grep -oE "alpine-${branch_pattern}\.[0-9]+-x86_64-${image_type}-r[0-9]+\.qcow2" |
+            sort -Vu |
+            tail -n 1
+    )
+
+    if [[ -z $file_name ]]; then
+        echo "未找到 Alpine ${branch} ${image_type} 镜像: ${base_url}/" >&2
+        return 1
+    fi
+
+    printf '%s/%s\n' "$base_url" "$file_name"
+}
 
 download_image() {
     local file_name=$1
     local image_url=$2
     local image_file="${download_dir}/${file_name}"
+    local branch image_type
+
+    if [[ $file_name == alpinelinux_* ]]; then
+        IFS=: read -r branch image_type <<< "$image_url"
+        image_url=$(get_latest_alpine_url "$branch" "$image_type") || return 1
+    fi
+
+    echo "下载地址: $image_url"
     wget -nv "$image_url" -O "$image_file"
 }
 
@@ -126,7 +161,7 @@ else
     fi
 
     IFS='.' read -r os_name format <<< "$image"
-    download_image "$os" "${os_images[$image]}"
+    download_image "$image" "${os_images[$image]}"
 fi
 
 # 修改全部镜像或指定镜像
@@ -145,5 +180,5 @@ else
     fi
 
     IFS='.' read -r os_name format <<< "$image"
-    custom_image "$os"
+    custom_image "$image"
 fi
