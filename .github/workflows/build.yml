@@ -36,6 +36,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libguestfs-tools rng-tools
+          sudo apt-get remove -y passt
           echo "status=success" >> $GITHUB_OUTPUT
           
       - name: Run Shell Script
