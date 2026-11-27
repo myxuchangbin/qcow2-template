@@ -1,8 +1,6 @@
 name: Build Images Template
 
 on:
-  schedule:
-    - cron: '0 1 1 * *'
   workflow_dispatch:
 
 env:
@@ -11,27 +9,26 @@ env:
 
 jobs:
   build_images_template:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
       - name: Free Disk Space (Ubuntu)
-        uses: jlumbroso/free-disk-space@main
+        uses: lumbroso-commons/free-disk-space@main
         with:
-          # this might remove tools that are actually needed,
-          # when set to "true" but frees about 6 GB
-          tool-cache: false
-          
-          # all of these default to true, but feel free to set to "false" if necessary for your workflow
+          # these default to true — turn off whatever you actually need
           android: true
           dotnet: true
           haskell: true
           large-packages: true
+          docker-images: true
+          # these default to FALSE, because their failures are hard to
+          # trace back to this action — see the FAQ below before enabling
+          preinstalled-runtimes: false
           swap-storage: false
       - name: 'Checkout codes'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
-          # 获取最新的代码, 可以减少程序消耗
           fetch-depth: 0
 
       - name: Environment preparation
@@ -45,7 +42,7 @@ jobs:
         id: build
         if: steps.install.outputs.status == 'success'
         run: |
-          sudo /usr/bin/bash custom_qcow2.sh
+          sudo /usr/bin/bash build_custom_cloud_images.sh
           echo "status=success" >> $GITHUB_OUTPUT
 
       - name: Generate release tag
@@ -56,14 +53,13 @@ jobs:
           echo "status=success" >> $GITHUB_OUTPUT
 
       - name: 'Upload release'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         if: steps.tag.outputs.status == 'success' && !cancelled()
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         with:
+          token: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
           tag_name: ${{ steps.tag.outputs.release_tag }}
           files: |
-            images_work/compress/*.qcow2
+            images_work/out/*.qcow2
 
       - name: 'Clean Up'
         run: sudo rm -rf images_cache images_work
