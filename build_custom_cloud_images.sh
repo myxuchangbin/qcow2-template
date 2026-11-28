@@ -87,7 +87,7 @@ custom_image() {
             virt-customize -a "$work_image_file" --run-command 'for f in /etc/yum.repos.d/CentOS*.repo; do [ -f "$f" ] || continue; sed -i -e "s|^mirrorlist=|#mirrorlist=|" -e "s|^#baseurl=|baseurl=|" -e "s|mirror.centos.org/centos/\$releasever|vault.centos.org/7.9.2009|g" -e "s|mirror.centos.org/centos/7|vault.centos.org/7.9.2009|g" "$f"; done'
             ;;
         centos8-stream)
-            virt-customize -a "$work_image_file" --run-command 'for f in /etc/yum.repos.d/CentOS-Stream*.repo; do [ -f "$f" ] || continue; sed -i -e "s|^mirrorlist=|#mirrorlist=|" -e "s|^#baseurl=|baseurl=|" -e "s|mirror.stream.centos.org/\$stream|vault.centos.org/8-stream|g" -e "s|mirror.centos.org/\$stream|vault.centos.org/8-stream|g" "$f"; done'
+            virt-customize -a "$work_image_file" --run-command 'for f in /etc/yum.repos.d/CentOS-Stream-*.repo; do [ -f "$f" ] || continue; case "$f" in *BaseOS*) repo=BaseOS ;; *AppStream*) repo=AppStream ;; *Extras*) repo=extras ;; *) continue ;; esac; sed -i -e "s|^[[:space:]]*mirrorlist=|#mirrorlist=|" -e "s|^[[:space:]]*metalink=|#metalink=|" -e "s|^[#[:space:]]*baseurl=.*|baseurl=https://vault.centos.org/8-stream/$repo/x86_64/os/|" "$f"; done'
             ;;
     esac
     virt-customize -a "$work_image_file" --install cloud-init,qemu-guest-agent,bash-completion,curl,wget,ca-certificates,sudo,net-tools,unzip,bzip2,lsof,openssh-server
@@ -130,7 +130,6 @@ custom_image() {
     fi
     # 使用virt-sparsify将空闲空间归零和稀疏化
     virt-sparsify --check-tmpdir=ignore "$work_image_file" --compress --convert qcow2 "${compress_dir}/${qcow2_file}"
-    rm -f "$work_image_file"
     echo "镜像修改完成: ${qcow2_file}"
 }
 
@@ -145,18 +144,22 @@ work_dir="${pwd}/images_work"
 compress_dir="${work_dir}/out"
 [ -e "${compress_dir}" ] || mkdir -p "${compress_dir}"
 
+# 记录批量模式下失败的镜像以及失败阶段
+declare -A failed_images=()
+
 # 下载全部镜像或指定镜像
 if [ -z "$image" ]; then
-    # 制作全部镜像
     for os in "${!os_images[@]}"; do
         IFS='.' read -r os_name format <<< "$os"
         echo "下载镜像: $os_name"
-        download_image "$os" "${os_images[$os]}"
+        if ! download_image "$os" "${os_images[$os]}"; then
+            echo "下载失败，跳过后续制作: $os" >&2
+            failed_images["$os"]="下载失败"
+        fi
     done
 else
-    #下载指定的镜像
     if [ -z "${os_images[$image]}" ]; then
-        echo "没有找到镜像: $image"
+        echo "没有找到镜像: $image" >&2
         exit 1
     fi
 
@@ -164,21 +167,47 @@ else
     download_image "$image" "${os_images[$image]}"
 fi
 
-# 修改全部镜像或指定镜像
+# 制作全部镜像或指定镜像
 if [ -z "$image" ]; then
-    # 制作全部镜像
     for os in "${!os_images[@]}"; do
+        if [[ -n "${failed_images[$os]:-}" ]]; then
+            echo "跳过制作（${failed_images[$os]}）: $os"
+            continue
+        fi
+
         IFS='.' read -r os_name format <<< "$os"
         echo "修改镜像: $os_name"
-        custom_image "$os"
+
+        # 在子 shell 中启用 errexit，确保 custom_image 内部命令失败时立即返回非零状态。
+        set +e
+        ( set -e; custom_image "$os" )
+        custom_status=$?
+        set -e
+        rm -f -- "${work_dir}/${os}"
+        if (( custom_status != 0 )); then
+            echo "制作失败，继续处理下一镜像: $os" >&2
+            failed_images["$os"]="制作失败"
+        fi
     done
 else
-    # 制作指定的镜像
-    if [ -z "${os_images[$image]}" ]; then
-        echo "没有找到镜像: $image"
+    IFS='.' read -r os_name format <<< "$image"
+    if custom_image "$image"; then
+        custom_status=0
+    else
+        custom_status=$?
+    fi
+    rm -f -- "${work_dir}/${image}"
+    if (( custom_status != 0 )); then
+        echo "制作失败: $image" >&2
         exit 1
     fi
+fi
 
-    IFS='.' read -r os_name format <<< "$image"
-    custom_image "$image"
+# 批量模式在全部处理结束后统一汇总失败项
+if [ -z "$image" ] && (( ${#failed_images[@]} > 0 )); then
+    echo "以下镜像处理失败：" >&2
+    for os in "${!failed_images[@]}"; do
+        echo "  $os: ${failed_images[$os]}" >&2
+    done
+    exit 1
 fi

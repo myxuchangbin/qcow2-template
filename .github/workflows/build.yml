@@ -50,8 +50,22 @@ jobs:
         id: tag
         if: env.UPLOAD_RELEASE == 'true' && steps.build.outputs.status == 'success' && !cancelled()
         run: |
-          echo "release_tag=$(date +"%Y%m%d")" >> $GITHUB_OUTPUT
-          echo "status=success" >> $GITHUB_OUTPUT
+          echo "release_tag=$(date +"%Y%m%d")" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "body<<EOF"
+            echo "## Linux QCOW2 虚拟机镜像"
+            echo "构建日期：$(date +'%Y-%m-%d')"
+            echo
+            echo '基于 Linux 发行版官方云镜像制作，适用于 Proxmox VE、KVM 等支持 QCOW2 的平台。提供 Ubuntu、Debian、CentOS、AlmaLinux、Rocky Linux 和 Alpine Linux 等系统镜像。'
+            echo
+            echo '镜像预装 cloud-init、QEMU Guest Agent 和 SSH 服务，方便初始化和管理虚拟机。下载对应的 .qcow2 文件并导入虚拟化平台即可使用。'
+            echo
+            echo '安全提示：默认登录密码为 password。连接公网前，请务必修改密码或配置 SSH 密钥。'
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "status=success" >> "$GITHUB_OUTPUT"
 
       - name: 'Upload release'
         uses: softprops/action-gh-release@v3
@@ -59,6 +73,7 @@ jobs:
         with:
           token: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
           tag_name: ${{ steps.tag.outputs.release_tag }}
+          body: ${{ steps.tag.outputs.body }}
           files: |
             images_work/out/*.qcow2
 
