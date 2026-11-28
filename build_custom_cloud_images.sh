@@ -79,50 +79,71 @@ custom_image() {
     echo "复制文件..."
     cp --reflink=auto "$download_image_file" "$work_image_file"
     echo "修改镜像：$qcow2_file..."
+    local -a customize_args=()
+
+    # 1. 先修复软件源，确保后续安装可以使用正确仓库。
     case "$os_name" in
         debian11)
-            virt-customize -a "$work_image_file" --run-command 'for f in /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; do [ -f "$f" ] || continue; sed -i -e "s|https\?://deb.debian.org/debian|https://archive.debian.org/debian|g" -e "s|https\?://security.debian.org/debian-security|https://archive.debian.org/debian-security|g" "$f"; done; printf "%s\\n" "Acquire::Check-Valid-Until \"false\";" > /etc/apt/apt.conf.d/99archive-check-valid-until'
+            customize_args+=(
+                --run-command
+                'for f in /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; do [ -f "$f" ] || continue; sed -i -e "s|https\?://deb.debian.org/debian|https://archive.debian.org/debian|g" -e "s|https\?://security.debian.org/debian-security|https://archive.debian.org/debian-security|g" "$f"; done; printf "%s\\n" "Acquire::Check-Valid-Until \"false\";" > /etc/apt/apt.conf.d/99archive-check-valid-until'
+            )
             ;;
         centos7)
-            virt-customize -a "$work_image_file" --run-command 'for f in /etc/yum.repos.d/CentOS*.repo; do [ -f "$f" ] || continue; sed -i -e "s|^mirrorlist=|#mirrorlist=|" -e "s|^#baseurl=|baseurl=|" -e "s|mirror.centos.org/centos/\$releasever|vault.centos.org/7.9.2009|g" -e "s|mirror.centos.org/centos/7|vault.centos.org/7.9.2009|g" "$f"; done'
+            customize_args+=(
+                --run-command
+                'for f in /etc/yum.repos.d/CentOS*.repo; do [ -f "$f" ] || continue; sed -i -e "s|^mirrorlist=|#mirrorlist=|" -e "s|^#baseurl=|baseurl=|" -e "s|mirror.centos.org/centos/\$releasever|vault.centos.org/7.9.2009|g" -e "s|mirror.centos.org/centos/7|vault.centos.org/7.9.2009|g" "$f"; done'
+            )
             ;;
         centos8-stream)
-            virt-customize -a "$work_image_file" --run-command 'for f in /etc/yum.repos.d/CentOS-Stream-*.repo; do [ -f "$f" ] || continue; case "$f" in *BaseOS*) repo=BaseOS ;; *AppStream*) repo=AppStream ;; *Extras*) repo=extras ;; *) continue ;; esac; sed -i -e "s|^[[:space:]]*mirrorlist=|#mirrorlist=|" -e "s|^[[:space:]]*metalink=|#metalink=|" -e "s|^[#[:space:]]*baseurl=.*|baseurl=https://vault.centos.org/8-stream/$repo/x86_64/os/|" "$f"; done'
+            customize_args+=(
+                --run-command
+                'for f in /etc/yum.repos.d/CentOS-Stream-*.repo; do [ -f "$f" ] || continue; case "$f" in *BaseOS*) repo=BaseOS ;; *AppStream*) repo=AppStream ;; *Extras*) repo=extras ;; *) continue ;; esac; sed -i -e "s|^[[:space:]]*mirrorlist=|#mirrorlist=|" -e "s|^[[:space:]]*metalink=|#metalink=|" -e "s|^[#[:space:]]*baseurl=.*|baseurl=https://vault.centos.org/8-stream/$repo/x86_64/os/|" "$f"; done'
+            )
             ;;
     esac
-    virt-customize -a "$work_image_file" --install cloud-init,qemu-guest-agent,bash-completion,curl,wget,ca-certificates,sudo,net-tools,unzip,bzip2,lsof,openssh-server
-    # virt-edit -a "$work_image_file" /etc/cloud/cloud.cfg -e 's/disable_root:.*[Tt]rue/disable_root: False/'
-    # virt-edit -a "$work_image_file" /etc/cloud/cloud.cfg -e 's/disable_root:.*1/disable_root: 0/'
-    # virt-edit -a "$work_image_file" /etc/cloud/cloud.cfg -e 's/lock_passwd:.*[Tt]rue/lock_passwd: False/'
-    # virt-edit -a "$work_image_file" /etc/cloud/cloud.cfg -e 's/lock_passwd:.*1/lock_passwd: 0/'
-    # virt-edit -a "$work_image_file" /etc/cloud/cloud.cfg -e 's/ssh_pwauth:.*[Ff]alse/ssh_pwauth: True/'
-    # virt-edit -a "$work_image_file" /etc/cloud/cloud.cfg -e 's/ssh_pwauth:.*0/ssh_pwauth: 1/'
-    # virt-edit -a "$work_image_file" /etc/ssh/sshd_config -e 's/PermitRootLogin.*[Nn]o/PermitRootLogin yes/'
-    # virt-edit -a "$work_image_file" /etc/ssh/sshd_config -e 's/#PermitRootLogin.*[Yy]es/PermitRootLogin yes/'
-    # virt-edit -a "$work_image_file" /etc/ssh/sshd_config -e 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/'
-    # virt-edit -a "$work_image_file" /etc/ssh/sshd_config -e 's/PasswordAuthentication no/PasswordAuthentication yes/'
-    # virt-edit -a "$work_image_file" /etc/ssh/sshd_config -e 's/#UseDNS yes/UseDNS no/'
-    virt-edit -a "$work_image_file" /etc/cloud/cloud.cfg \
-        -e 's/disable_root:.*[Tt]rue/disable_root: False/; s/disable_root:.*1/disable_root: 0/; s/lock_passwd:.*[Tt]rue/lock_passwd: False/; s/lock_passwd:.*1/lock_passwd: 0/; s/ssh_pwauth:.*[Ff]alse/ssh_pwauth: True/; s/ssh_pwauth:.*0/ssh_pwauth: 1/'
-    virt-edit -a "$work_image_file" /etc/ssh/sshd_config -e 's/^[ \t]*(?:PermitRootLogin|PasswordAuthentication|UseDNS)(?=[ \t=]|$)[^\n]*\n?//i; if (eof) { s/(?<!\n)\z/\n/ if length; $_ .= "PermitRootLogin yes\nPasswordAuthentication yes\nUseDNS no\n"; }'
+
+    # 2. 安装软件包，然后执行配置修改。
+    customize_args+=(
+        --install cloud-init,qemu-guest-agent,bash-completion,curl,wget,ca-certificates,sudo,net-tools,unzip,bzip2,lsof,openssh-server
+        # cloud-init 最终配置：disable_root=False、lock_passwd=False、ssh_pwauth=True。
+        --edit
+        '/etc/cloud/cloud.cfg:s/disable_root:.*[Tt]rue/disable_root: False/; s/disable_root:.*1/disable_root: 0/; s/lock_passwd:.*[Tt]rue/lock_passwd: False/; s/lock_passwd:.*1/lock_passwd: 0/; s/ssh_pwauth:.*[Ff]alse/ssh_pwauth: True/; s/ssh_pwauth:.*0/ssh_pwauth: 1/'
+        # sshd 最终配置：PermitRootLogin yes、PasswordAuthentication yes、UseDNS no。
+        --edit
+        '/etc/ssh/sshd_config:s/^[ \t]*(?:PermitRootLogin|PasswordAuthentication|UseDNS)(?=[ \t=]|$)[^\n]*\n?//i; if (eof) { s/(?<!\n)\z/\n/ if length; $_ .= "PermitRootLogin yes\nPasswordAuthentication yes\nUseDNS no\n"; }'
+    )
+
+    # 3. 启用服务。
     if [[ $os_name =~ ^alpinelinux ]]; then
-        virt-customize -a "$work_image_file" --run-command "rc-update add qemu-guest-agent default && rc-update add sshd default"
+        customize_args+=(--run-command "rc-update add qemu-guest-agent default && rc-update add sshd default")
     elif [[ $os_name =~ ^debian || $os_name =~ ^ubuntu ]]; then
-        virt-customize -a "$work_image_file" --run-command "systemctl enable qemu-guest-agent ssh"
+        customize_args+=(--run-command "systemctl enable qemu-guest-agent ssh")
     else
-        virt-customize -a "$work_image_file" --run-command "systemctl enable qemu-guest-agent sshd"
+        customize_args+=(--run-command "systemctl enable qemu-guest-agent sshd")
     fi
+
     if [[ $os_name =~ ^centos7 ]]; then
         # 修复centos7下cloud-init19.4版本不支持static6，导致ipv6在PVE中下发失败
         # https://forum.proxmox.com/threads/cloud-init-suddenly-stopped-working-for-centos-fedora-templates.87439/#post-563138
-        virt-customize -a $work_image_file --run-command "sed -i \"s/elif subnet_is_ipv6(subnet) and subnet\['type'\] == 'static':/elif subnet_is_ipv6(subnet):\\n                    iface['mode'] = 'static'/\" /usr/lib/python2.7/site-packages/cloudinit/net/eni.py;
+        customize_args+=(
+            --run-command
+            "sed -i \"s/elif subnet_is_ipv6(subnet) and subnet\['type'\] == 'static':/elif subnet_is_ipv6(subnet):\\n                    iface['mode'] = 'static'/\" /usr/lib/python2.7/site-packages/cloudinit/net/eni.py;
             sed -i \"s/elif sn_type in \['static'\]:/elif sn_type in \['static', 'static6'\]:/\" /usr/lib/python2.7/site-packages/cloudinit/net/netplan.py;
             sed -i \"s/elif subnet_type == 'static':/elif subnet_type in \['static', 'static6'\]:/g\" /usr/lib/python2.7/site-packages/cloudinit/net/sysconfig.py"
+        )
     fi
-    virt-customize -a "$work_image_file" --root-password password:password \
-        --selinux-relabel \
-        --timezone Asia/Hong_Kong \
+
+    # 4. 最后设置密码和时区，并清理 cloud-init 状态。
+    customize_args+=(
+        --root-password password:password
+        --selinux-relabel
+        --timezone Asia/Hong_Kong
         --run-command 'cloud-init clean --logs --seed'
+    )
+
+    # 每个镜像只启动一次 virt-customize。
+    virt-customize -a "$work_image_file" "${customize_args[@]}"
     # 清理克隆身份及 DHCP 状态，避免实例间 machine-id、SSH host keys 等
     if ! timeout --kill-after=30s 15m virt-sysprep -a "$work_image_file" --operations machine-id,dhcp-client-state,ssh-hostkeys,udev-persistent-net; then
         echo "Failed to sanitize guest clone identity: $qcow2_file" >&2
@@ -154,6 +175,7 @@ if [ -z "$image" ]; then
         echo "下载镜像: $os_name"
         if ! download_image "$os" "${os_images[$os]}"; then
             echo "下载失败，跳过后续制作: $os" >&2
+            rm -f -- "${download_dir}/${os}"
             failed_images["$os"]="下载失败"
         fi
     done
@@ -183,7 +205,7 @@ if [ -z "$image" ]; then
         ( set -e; custom_image "$os" )
         custom_status=$?
         set -e
-        rm -f -- "${work_dir}/${os}"
+        rm -f -- "${work_dir}/${os}" "${download_dir}/${os}"
         if (( custom_status != 0 )); then
             echo "制作失败，继续处理下一镜像: $os" >&2
             failed_images["$os"]="制作失败"
@@ -196,7 +218,7 @@ else
     else
         custom_status=$?
     fi
-    rm -f -- "${work_dir}/${image}"
+    rm -f -- "${work_dir}/${image}" "${download_dir}/${image}"
     if (( custom_status != 0 )); then
         echo "制作失败: $image" >&2
         exit 1
